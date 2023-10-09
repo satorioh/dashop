@@ -1,6 +1,7 @@
 import jwt
 from dashop import settings
 from django.http import JsonResponse, HttpRequest
+from users.models import UserProfile
 
 
 def logging_check(func):
@@ -12,9 +13,9 @@ def logging_check(func):
       2.2 成功:执行视图func(...)
     """
 
-    def wrapper(self, request, *args, **kwargs):
+    def wrapper(self, request, username, *args, **kwargs):
         token = request.headers.get("Authorization")
-        print(f"token -> {token}")
+        print(f"token -> {token}, {username}")
 
         try:
             payload = jwt.decode(token, settings.JWT_TOKEN_KEY, algorithms="HS256")
@@ -22,6 +23,16 @@ def logging_check(func):
             print(e)
             # token有问题
             return JsonResponse({"code": 403})
-        return func(self, request, *args, **kwargs)
+
+        payload_username = payload.get("username")
+        if username != payload_username:
+            # 用户名不匹配
+            return JsonResponse({"code": 403})
+
+        user = UserProfile.objects.get(username=username)
+
+        request.myuser = user
+
+        return func(self, request, username, *args, **kwargs)
 
     return wrapper

@@ -6,7 +6,7 @@ import jwt
 from django.http import JsonResponse, HttpRequest
 from django.views import View
 
-from users.models import UserProfile
+from users.models import UserProfile, Address
 from dashop import settings
 from utils.logging_dec import logging_check
 
@@ -105,15 +105,34 @@ class AddressView(View):
         """
         获取用户地址
         """
-        print("获取用户地址方法")
-        return JsonResponse({"code": 200, "username": username})
+        print(f"获取用户地址 -> {request.myuser}")
+        return JsonResponse({"code": 200})
 
     @logging_check
     def post(self, request: HttpRequest, username: str) -> JsonResponse:
         """
-        新增用户地址
+        新增收货地址视图逻辑
+        1.获取请求体数据
+        2.存入地址表
+          第一个地址:添加并设置为默认地址
+          非第一个地址:添加地址
         """
-        return JsonResponse({"code": 200, "username": username})
+        data = json.loads(request.body)
+        receiver = data.get("receiver")
+        receiver_phone = data.get("receiver_phone")
+        address = data.get("address")
+        postcode = data.get("postcode")
+        tag = data.get("tag")
+        user = request.myuser
+
+        # 查询该用户是否有收货地址
+        address_query = Address.objects.filter(user_profile=user, is_delete=False)
+        is_default = False if address_query else True
+
+        Address.objects.create(user_profile=user, receiver=receiver, receiver_mobile=receiver_phone, address=address,
+                               postcode=postcode, tag=tag, is_default=is_default)
+
+        return JsonResponse({"code": 200, "data": "新增地址成功"})
 
     @logging_check
     def put(self, request: HttpRequest, username: str) -> JsonResponse:
