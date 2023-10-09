@@ -4,8 +4,11 @@ import time
 
 import jwt
 from django.http import JsonResponse, HttpRequest
+from django.views import View
+
 from users.models import UserProfile
 from dashop import settings
+from utils.logging_dec import logging_check
 
 
 def register(request: HttpRequest) -> JsonResponse:
@@ -90,6 +93,41 @@ def login(request: HttpRequest) -> JsonResponse:
         "carts_count": 0
     }
     return JsonResponse(result)
+
+
+class AddressView(View):
+    """
+    用户地址视图类
+    """
+
+    @logging_check
+    def get(self, request: HttpRequest, username: str) -> JsonResponse:
+        """
+        获取用户地址
+        """
+        print("获取用户地址方法")
+        return JsonResponse({"code": 200, "username": username})
+
+    @logging_check
+    def post(self, request: HttpRequest, username: str) -> JsonResponse:
+        """
+        新增用户地址
+        """
+        return JsonResponse({"code": 200, "username": username})
+
+    @logging_check
+    def put(self, request: HttpRequest, username: str) -> JsonResponse:
+        """
+        修改用户地址
+        """
+        return JsonResponse({"code": 200, "username": username})
+
+    @logging_check
+    def delete(self, request: HttpRequest, username: str) -> JsonResponse:
+        """
+        删除用户地址
+        """
+        return JsonResponse({"code": 200, "username": username})
 
 
 def md5_string(s):
