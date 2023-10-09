@@ -64,6 +64,34 @@ def register(request: HttpRequest) -> JsonResponse:
     return JsonResponse(result)
 
 
+def login(request: HttpRequest) -> JsonResponse:
+    """
+       登录功能视图逻辑
+       1.获取请求体数据
+       2.校验用户名和密码是否正确
+         2.1 错误:直接返回
+         2.2 正确:生成token,然后返回
+       """
+    data = json.loads(request.body)
+    print(f"login data ->{data}")
+    username = data.get("username")
+    password = data.get("password")
+    user_query = UserProfile.objects.filter(username=username, password=md5_string(password))
+    print(f"login user_query -> {user_query}")
+
+    if not user_query:
+        return JsonResponse({"code": 10104, "error": "用户名或密码错误"})
+
+    # 返回响应
+    result = {
+        "code": 200,
+        "username": username,
+        "token": make_token(username),
+        "carts_count": 0
+    }
+    return JsonResponse(result)
+
+
 def md5_string(s):
     """
     功能函数:md5加密
