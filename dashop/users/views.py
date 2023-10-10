@@ -103,10 +103,21 @@ class AddressView(View):
     @logging_check
     def get(self, request: HttpRequest, username: str) -> JsonResponse:
         """
-        获取用户地址
+         查询收货地址视图逻辑
+        1.查询该用户所有的收货地址
+        2.组装数据返回响应
+        {"code":200,"addresslist":[{},{},{},{},{}]}
         """
-        print(f"获取用户地址 -> {request.myuser}")
-        return JsonResponse({"code": 200})
+        print(f"查询收货地址")
+        addr_query = Address.objects.filter(user_profile=request.myuser, is_delete=False)
+        addr_list = list(
+            addr_query.values('id', 'address', 'receiver', 'receiver_mobile', 'tag', 'postcode', 'is_default'))
+
+        result = {
+            "code": 200,
+            "addresslist": addr_list
+        }
+        return JsonResponse(result)
 
     @logging_check
     def post(self, request: HttpRequest, username: str) -> JsonResponse:
