@@ -1,6 +1,7 @@
 import json
 import hashlib
 import time
+from datetime import datetime
 
 import jwt
 from django.http import JsonResponse, HttpRequest
@@ -146,11 +147,25 @@ class AddressView(View):
         return JsonResponse({"code": 200, "data": "新增地址成功"})
 
     @logging_check
-    def put(self, request: HttpRequest, username: str) -> JsonResponse:
+    def put(self, request, username: str, id) -> JsonResponse:
         """
-        修改用户地址
+        修改地址视图逻辑
+        1.获取请求体数据
+        2.一查二改三保存
+        3.返回响应
         """
-        return JsonResponse({"code": 200, "username": username})
+        user = request.myuser
+        try:
+            addr = Address.objects.filter(user_profile=user, id=id, is_delete=False)
+        except Exception as e:
+            print(e)
+            return JsonResponse({"code": 10106, "error": "地址不存在"})
+
+        data = request.mydata
+        data.pop("id")
+        data["updated_time"] = datetime.now()
+        addr.update(**data)
+        return JsonResponse({"code": 200, "data": "地址修改成功"})
 
     @logging_check
     def delete(self, request: HttpRequest, username: str) -> JsonResponse:

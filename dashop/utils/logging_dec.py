@@ -1,3 +1,4 @@
+import json
 import jwt
 from dashop import settings
 from django.http import JsonResponse, HttpRequest
@@ -30,8 +31,12 @@ def logging_check(func):
             return JsonResponse({"code": 403})
 
         user = UserProfile.objects.get(username=username)
-
         request.myuser = user
+
+        # 封装mydata属性:请求体数据
+        request_data = request.body
+        if request_data:
+            request.mydata = json.loads(request_data)
 
         return func(self, request, username, *args, **kwargs)
 
