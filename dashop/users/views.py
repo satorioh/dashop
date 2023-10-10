@@ -109,7 +109,6 @@ class AddressView(View):
         2.组装数据返回响应
         {"code":200,"addresslist":[{},{},{},{},{}]}
         """
-        print(f"查询收货地址")
         addr_query = Address.objects.filter(user_profile=request.myuser, is_delete=False)
         addr_list = list(
             addr_query.values('id', 'address', 'receiver', 'receiver_mobile', 'tag', 'postcode', 'is_default'))
@@ -168,11 +167,20 @@ class AddressView(View):
         return JsonResponse({"code": 200, "data": "地址修改成功"})
 
     @logging_check
-    def delete(self, request: HttpRequest, username: str) -> JsonResponse:
+    def delete(self, request, username: str, id) -> JsonResponse:
         """
-        删除用户地址
+        删除地址视图逻辑
+        伪删除:一查二改三保存
         """
-        return JsonResponse({"code": 200, "username": username})
+        user = request.myuser
+        try:
+            addr = Address.objects.get(user_profile=user, id=id, is_delete=False)
+        except Exception as e:
+            print(e)
+            return JsonResponse({"code": 10106, "error": "地址不存在"})
+        addr.is_delete = True
+        addr.save()
+        return JsonResponse({"code": 200, "data": "地址删除成功"})
 
 
 def md5_string(s):
