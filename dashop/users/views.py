@@ -4,6 +4,7 @@ import time
 from datetime import datetime
 
 import jwt
+from django.db import transaction
 from django.http import JsonResponse, HttpRequest
 from django.views import View
 
@@ -181,6 +182,47 @@ class AddressView(View):
         addr.is_delete = True
         addr.save()
         return JsonResponse({"code": 200, "data": "地址删除成功"})
+
+
+class DefaultAddressView(View):
+    @logging_check
+    def post(self, request, username):
+        """
+        设置默认地址视图逻辑
+        1.获取请求体数据[id]
+        2.把原来的默认地址取消默认
+        3.把现在的地址设置为默认
+        4.返回响应
+        """
+        id = request.mydata.get("id")
+        user = request.myuser
+
+        # 开启事务
+        with transaction.atomic():
+            # 创建存储点
+            sid = transaction.savepoint()
+            try:
+                # 把原来的默认地址取消默认
+                # <QuerySet [<AddrObject>]>
+                old_query = Address.objects.filter(is_default=True, user_profile=user, is_delete=False)
+                if old_query:
+                    old_addr = old_query[0]
+                    old_addr.is_default = False
+                    old_addr.save()
+
+                # 现在的地址设置为默认
+                new_addr = Address.objects.get(id=id, user_profile=user, is_delete=False)
+                new_addr.is_default = True
+                new_addr.save()
+            except Exception as e:
+                # 回滚+返回
+                transaction.savepoint_rollback(sid)
+                return JsonResponse({"code": 10107, "error": "设置默认地址失败"})
+
+            # 提交事务
+            transaction.savepoint_commit(sid)
+
+        return JsonResponse({"code": 200, "data": "设置默认地址成功"})
 
 
 def md5_string(s):

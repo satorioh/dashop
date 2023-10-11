@@ -10,4 +10,6 @@ urlpatterns = [
     path("<str:username>/address", views.AddressView.as_view()),
     # 收货地址[修改和删除]:v1/users/<username>/address/<id>
     path("<str:username>/address/<int:id>", views.AddressView.as_view()),
+    # 默认地址:v1/users/<username>/address/default
+    path("<str:username>/address/default", views.DefaultAddressView.as_view()),
 ]
