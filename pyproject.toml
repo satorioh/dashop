@@ -15,3 +15,6 @@ requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "MIT"}
 
+[tool.pdm.scripts]
+start = "doppler run -- python dashop/manage.py runserver"
+
