@@ -172,11 +172,25 @@ EMAIL_USE_TLS = True
 
 # -------------缓存配置-------------- #
 CACHES = {
+    # db1:存储邮件激活随机数
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": "redis://127.0.0.1:6379/1",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
+    },
+    # db2:存储短信验证码
+    "sms": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/2",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
     }
 }
+
+# -------------短信接口配置-------------- #
+SMS_ACCOUNT_SID = os.getenv("SMS_ACCOUNT_SID")
+SMS_TOKEN = os.getenv("SMS_TOKEN")
+SMS_APP_ID = os.getenv("SMS_APP_ID")

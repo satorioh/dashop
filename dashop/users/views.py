@@ -10,11 +10,12 @@ from django.core import mail
 from django.db import transaction
 from django.http import JsonResponse, HttpRequest
 from django.views import View
-from django.core.cache import cache
+from django.core.cache import caches
 
 from users.models import UserProfile, Address
 from dashop import settings
 from utils.logging_dec import logging_check
+from utils.sms_api import send_sms
 
 
 def register(request: HttpRequest) -> JsonResponse:
@@ -34,6 +35,15 @@ def register(request: HttpRequest) -> JsonResponse:
     email = data.get("email")
     phone = data.get("phone")
     verify = data.get("verify")
+
+    # 短信验证码校验
+    key2 = f"sms_{phone}"
+    redis_code = caches["sms"].get(key2)
+    if not redis_code:
+        return JsonResponse({"code": 10110, "error": "验证码已过期,请重新获取"})
+
+    if str(redis_code) != verify:
+        return JsonResponse({"code": 10111, "error": "验证码错误,请重新输入"})
 
     # 2.数据合法性校验
     if len(username) < 6 or len(username) > 11:
@@ -71,10 +81,13 @@ def register(request: HttpRequest) -> JsonResponse:
     # 将随机数存入Redis
     # {"active_liying": 1016}
     key = f"active_{username}"
-    cache.set(key, rand_code, 86400 * 3)
+    caches['default'].set(key, rand_code, 86400 * 3)
 
     # 签发token
     token = make_token(username)
+
+    # 清除短信验证码,释放内存
+    caches["sms"].delete(key2)
 
     # 返回响应
     result = {
@@ -297,7 +310,7 @@ def active_view(request):
     code_num, username = code_str.split("_")
     # Redis中获取随机数
     key = f"active_{username}"
-    redis_num = cache.get(key)
+    redis_num = caches["default"].get(key)
 
     if str(redis_num) != code_num:
         return JsonResponse({"code:": 10108, "error": "激活失败"})
@@ -313,3 +326,32 @@ def active_view(request):
     user.save()
 
     return JsonResponse({"code": 200, "data": "激活成功"})
+
+
+def sms_view(request):
+    """
+    发送短信验证码视图逻辑
+    1.获取请求体数据[手机号]
+    2.发短信[调接口]
+    3.返回响应
+    """
+    mobile = json.loads(request.body).get("phone")
+    # Redis: {"sms_13603263409": 1016}
+    # 判断1分钟之内是否发过
+    key1 = f"sms_ex_{mobile}"
+    r = caches["sms"].get(key1)
+    if r:
+        return JsonResponse({"code": 10109, "error": "发送过于频繁"})
+
+    code = random.randint(1000, 9999)
+    datas = (code, 5)
+    send_sms("1", mobile, datas)
+
+    # 存入Redis数据库
+    # 60s:用于控制短信发送频率
+    caches["sms"].set(key1, code, 60)
+    # 300s:用于短信验证码的校验
+    key2 = f"sms_{mobile}"
+    caches["sms"].set(key2, code, 300)
+
+    return JsonResponse({"code": 200, "data": "验证码发送成功"})
