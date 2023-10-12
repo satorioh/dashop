@@ -10,6 +10,7 @@ dependencies = [
     "pymysql>=1.1.0",
     "django-cors-headers>=4.2.0",
     "pyjwt>=2.8.0",
+    "django-redis>=5.4.0",
 ]
 requires-python = ">=3.10"
 readme = "README.md"
@@ -17,4 +18,6 @@ license = {text = "MIT"}
 
 [tool.pdm.scripts]
 start = "doppler run -- python dashop/manage.py runserver"
+mm = "python dashop/manage.py makemigrations"
+mt = "python dashop/manage.py migrate"
 

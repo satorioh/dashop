@@ -1,12 +1,16 @@
+import base64
 import json
 import hashlib
 import time
 from datetime import datetime
-
+import random
 import jwt
+
+from django.core import mail
 from django.db import transaction
 from django.http import JsonResponse, HttpRequest
 from django.views import View
+from django.core.cache import cache
 
 from users.models import UserProfile, Address
 from dashop import settings
@@ -54,6 +58,20 @@ def register(request: HttpRequest) -> JsonResponse:
         print(f"user -> {user}")
     except Exception as e:
         print(e)
+
+    # 发送激活邮件
+    rand_code = random.randint(1000, 9999)
+    # 1016_liying
+    code_str = f"{rand_code}_{username}"
+    code = base64.b64encode(code_str.encode()).decode()
+
+    verify_url = f"http://localhost:8080/dashop/templates/active.html?code={code}"
+    send_active_email(email, username, verify_url)
+
+    # 将随机数存入Redis
+    # {"active_liying": 1016}
+    key = f"active_{username}"
+    cache.set(key, rand_code, 86400 * 3)
 
     # 签发token
     token = make_token(username)
@@ -241,3 +259,57 @@ def make_token(username, expire=3600 * 24):
     payload = {"exp": time.time() + expire, "username": username}
     key = settings.JWT_TOKEN_KEY
     return jwt.encode(payload, key, algorithm="HS256")
+
+
+def send_active_email(email, username, verify_url):
+    """
+    功能函数:发送激活邮件
+    """
+    subject = "达达商城激活邮件"
+    message = f"""
+    尊敬的 {username} 你好,请点击激活链接进行激活: {verify_url}
+    """
+
+    mail.send_mail(
+        # 标题、正文、发件人、收件人
+        subject=subject,
+        message=message,
+        from_email=settings.EMAIL_HOST_USER,
+        recipient_list=[email]
+    )
+
+
+def active_view(request):
+    """
+    邮件激活视图逻辑
+    1.获取查询参数:code
+    2.校验
+    3.激活用户:一查二改三保存
+    # request.GET:获取查询参数
+    # request.POST:获取请求体[form表单]
+    # request.body:获取请求体[json]
+    # request.headers:获取请求头
+    """
+    # code:OTgyNl9qaW5namluZw==
+    code = request.GET.get("code")
+    # code_str:1016_liying
+    code_str = base64.b64decode(code.encode()).decode()
+    code_num, username = code_str.split("_")
+    # Redis中获取随机数
+    key = f"active_{username}"
+    redis_num = cache.get(key)
+
+    if str(redis_num) != code_num:
+        return JsonResponse({"code:": 10108, "error": "激活失败"})
+
+    # 激活用户
+    try:
+        user = UserProfile.objects.get(username=username)
+    except Exception as e:
+        print(e)
+        return JsonResponse({"code:": 10109, "error": "服务器繁忙，请稍后再试"})
+
+    user.is_active = True
+    user.save()
+
+    return JsonResponse({"code": 200, "data": "激活成功"})

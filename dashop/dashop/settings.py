@@ -125,6 +125,7 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# -------------跨域配置-------------- #
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8080",
     "http://127.0.0.1:8080",
@@ -152,5 +153,30 @@ CORS_ALLOW_HEADERS = (
 
 CORS_PREFLIGHT_MAX_AGE = 3600 * 24  # 一天
 
-# JWT配置
-JWT_TOKEN_KEY = "123456"
+# -------------jwt配置-------------- #
+JWT_TOKEN_KEY = os.getenv("JWT_TOKEN_KEY")
+
+# -------------发送邮件设置-------------- #
+# 1.固定写法
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# 2.腾讯QQ邮箱 SMTP 服务器地址
+EMAIL_HOST = 'smtp.qq.com'
+# 3.SMTP服务的端口号
+EMAIL_PORT = 25
+# 4.发送邮件的QQ邮箱
+EMAIL_HOST_USER = os.getenv("MAIL_HOST")
+# 5.在QQ邮箱->设置->帐户->“POP3/IMAP......服务” 里得到的在第三方登录QQ邮箱授权码
+EMAIL_HOST_PASSWORD = os.getenv("MAIL_TOKEN")
+# 与SMTP服务器通信时，是否启动TLS链接(安全链接)默认false
+EMAIL_USE_TLS = True
+
+# -------------缓存配置-------------- #
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}

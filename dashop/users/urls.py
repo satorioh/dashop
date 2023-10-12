@@ -12,4 +12,6 @@ urlpatterns = [
     path("<str:username>/address/<int:id>", views.AddressView.as_view()),
     # 默认地址:v1/users/<username>/address/default
     path("<str:username>/address/default", views.DefaultAddressView.as_view()),
+    # 邮件激活:v1/users/activation
+    path("activation", views.active_view),
 ]
