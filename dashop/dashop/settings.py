@@ -128,7 +128,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # -------------跨域配置-------------- #
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8080",
+    "http://localhost:7000",
     "http://127.0.0.1:8080",
+    "http://127.0.0.1:7000",
 ]
 
 CORS_ALLOW_METHODS = (
@@ -194,3 +196,8 @@ CACHES = {
 SMS_ACCOUNT_SID = os.getenv("SMS_ACCOUNT_SID")
 SMS_TOKEN = os.getenv("SMS_TOKEN")
 SMS_APP_ID = os.getenv("SMS_APP_ID")
+
+# -------------微博配置-------------- #
+WEIBO_CLIENT_ID = os.getenv("WEIBO_APP_KEY")
+WEIBO_CLIENT_SECRET = os.getenv("WEIBO_APP_SECRET")
+WEIBO_REDIRECT_URI = os.getenv("WEIBO_REDIRECT_URI")

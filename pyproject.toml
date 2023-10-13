@@ -12,6 +12,7 @@ dependencies = [
     "pyjwt>=2.8.0",
     "django-redis>=5.4.0",
     "ronglian-sms-sdk>=1.0",
+    "requests>=2.31.0",
 ]
 requires-python = ">=3.10"
 readme = "README.md"
@@ -19,6 +20,6 @@ license = {text = "MIT"}
 
 [tool.pdm.scripts]
 start = "doppler run -- python dashop/manage.py runserver"
-mm = "python dashop/manage.py makemigrations"
-mt = "python dashop/manage.py migrate"
+mm = "doppler run -- python dashop/manage.py makemigrations"
+mt = "doppler run -- python dashop/manage.py migrate"
 

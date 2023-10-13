@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 import random
 import jwt
+import requests
 
 from django.core import mail
 from django.db import transaction
@@ -355,3 +356,66 @@ def sms_view(request):
     caches["sms"].set(key2, code, 300)
 
     return JsonResponse({"code": 200, "data": "验证码发送成功"})
+
+
+class WeiboCodeView(View):
+    def get(self, request):
+        """
+        获取授权码code视图逻辑
+        API文档:微博API文档
+        响应: {"code":200, "oauth_url":"xxx"}
+        """
+        oauth_url = f"https://api.weibo.com/oauth2/authorize?client_id={settings.WEIBO_CLIENT_ID}&redirect_uri={settings.WEIBO_REDIRECT_URI}&response_type=code"
+
+        result = {
+            "code": 200,
+            "oauth_url": oauth_url
+        }
+
+        return JsonResponse(result)
+
+
+class WeiboTokenView(View):
+    def get(self, request):
+        """
+        获取访问令牌access_token视图逻辑
+        1.获取授权码code
+        2.利用code获取访问令牌access_token
+        """
+        code = request.GET.get("code")
+        print(f"weibo code -> {code}")
+        # 访问令牌微博接口文档
+        url = "https://api.weibo.com/oauth2/access_token"
+        data = {
+            "client_id": settings.WEIBO_CLIENT_ID,
+            "client_secret": settings.WEIBO_CLIENT_SECRET,
+            "grant_type": "authorization_code",
+            "code": code,
+            "redirect_uri": settings.WEIBO_REDIRECT_URI
+        }
+        resp = requests.post(url=url, data=data).json()
+        print(f"weibo token resp -> {resp}")
+        """
+        resp返回格式如下：
+               {
+               "access_token": "ACCESS_TOKEN",
+               "expires_in": "7200",
+               "remind_in": "7200",
+               "uid": "1404376560"
+               }
+        """
+        wuid = resp.get("uid")
+        access_token = resp.get("access_token")
+
+        """
+        情况1:第一次扫码登录
+          存入微博表,并返回绑定注册页面[201]
+        情况2:非第一次扫码登录
+          1.在绑定注册页关闭页面[201]
+            返回绑定注册页面
+          2.已经和正式账号绑定过[200]
+            返回首页[以登录的状态]
+
+        200响应:{"code":200, "token":token, "username":username"}
+        201响应:{"code":201,"uid": wuid} 
+        """

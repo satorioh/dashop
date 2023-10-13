@@ -16,4 +16,8 @@ urlpatterns = [
     path("activation", views.active_view),
     # 短信验证码:v1/users/sms/code
     path("sms/code", views.sms_view),
+    # 微博登录[获取授权码code]:v1/users/weibo/authorization
+    path("weibo/authorization", views.WeiboCodeView.as_view()),
+    # 微博登录[获取访问令牌]:v1/users/weibo/users
+    path("weibo/users", views.WeiboTokenView.as_view()),
 ]

@@ -41,3 +41,16 @@ class Address(models.Model):
     class Meta:
         # 修改表名: 应用名_类名非驼峰
         db_table = "users_address"
+
+
+class WeiboProfile(models.Model):
+    """
+    微博表:和用户表是一对一关系
+    """
+    # null=True:用户到绑定注册页后直接关闭页面,没有执行绑定注册流程
+    user_profile = models.OneToOneField(UserProfile, on_delete=models.CASCADE, null=True)
+    wuid = models.CharField(max_length=10, unique=True, db_index=True)
+    access_token = models.CharField(max_length=32)
+
+    class Meta:
+        db_table = "users_weibo_profile"
