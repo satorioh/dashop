@@ -18,6 +18,9 @@ urlpatterns = [
     path("sms/code", views.sms_view),
     # 微博登录[获取授权码code]:v1/users/weibo/authorization
     path("weibo/authorization", views.WeiboCodeView.as_view()),
-    # 微博登录[获取访问令牌]:v1/users/weibo/users
+    # 微博登录[获取访问令牌]:Get v1/users/weibo/users
+    # 微博登录[没有账号请注册]:Post v1/users/weibo/users
     path("weibo/users", views.WeiboTokenView.as_view()),
+    # 微博登录[已有账号请绑定]:v1/users/weibo/users/binduser
+    path("weibo/users/binduser", views.BindUserView.as_view()),
 ]

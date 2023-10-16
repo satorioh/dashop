@@ -1,22 +1,19 @@
 import base64
 import json
-import hashlib
-import time
 from datetime import datetime
 import random
-import jwt
 import requests
 
-from django.core import mail
 from django.db import transaction
 from django.http import JsonResponse, HttpRequest
 from django.views import View
 from django.core.cache import caches
 
-from users.models import UserProfile, Address
+from users.models import UserProfile, Address, WeiboProfile
 from dashop import settings
 from utils.logging_dec import logging_check
 from utils.sms_api import send_sms
+from utils.helper import md5_string, make_token, send_active_email, get_verify_url
 
 
 def register(request: HttpRequest) -> JsonResponse:
@@ -71,18 +68,8 @@ def register(request: HttpRequest) -> JsonResponse:
         print(e)
 
     # 发送激活邮件
-    rand_code = random.randint(1000, 9999)
-    # 1016_liying
-    code_str = f"{rand_code}_{username}"
-    code = base64.b64encode(code_str.encode()).decode()
-
-    verify_url = f"http://localhost:8080/dashop/templates/active.html?code={code}"
+    verify_url = get_verify_url(username)
     send_active_email(email, username, verify_url)
-
-    # 将随机数存入Redis
-    # {"active_liying": 1016}
-    key = f"active_{username}"
-    caches['default'].set(key, rand_code, 86400 * 3)
 
     # 签发token
     token = make_token(username)
@@ -257,42 +244,6 @@ class DefaultAddressView(View):
         return JsonResponse({"code": 200, "data": "设置默认地址成功"})
 
 
-def md5_string(s):
-    """
-    功能函数:md5加密
-    """
-    m = hashlib.md5()
-    m.update(s.encode())
-    return m.hexdigest()
-
-
-def make_token(username, expire=3600 * 24):
-    """
-    功能函数:签发token
-    """
-    payload = {"exp": time.time() + expire, "username": username}
-    key = settings.JWT_TOKEN_KEY
-    return jwt.encode(payload, key, algorithm="HS256")
-
-
-def send_active_email(email, username, verify_url):
-    """
-    功能函数:发送激活邮件
-    """
-    subject = "达达商城激活邮件"
-    message = f"""
-    尊敬的 {username} 你好,请点击激活链接进行激活: {verify_url}
-    """
-
-    mail.send_mail(
-        # 标题、正文、发件人、收件人
-        subject=subject,
-        message=message,
-        from_email=settings.EMAIL_HOST_USER,
-        recipient_list=[email]
-    )
-
-
 def active_view(request):
     """
     邮件激活视图逻辑
@@ -408,14 +359,124 @@ class WeiboTokenView(View):
         access_token = resp.get("access_token")
 
         """
-        情况1:第一次扫码登录
-          存入微博表,并返回绑定注册页面[201]
-        情况2:非第一次扫码登录
-          1.在绑定注册页关闭页面[201]
-            返回绑定注册页面
-          2.已经和正式账号绑定过[200]
-            返回首页[以登录的状态]
+        情况1:
+            第一次扫码登录，即完全无记录的：把wuid和微博token存入微博表，然后跳转到绑定注册页面[201]
+        情况2:
+            有授权，但未绑定的（有wuid和微博token，没有user_profile的）：跳转到绑定注册页面[201]
+        情况3：
+            已经和正式账号绑定过：生成本系统的token，返回前端，跳转首页[200]
 
         200响应:{"code":200, "token":token, "username":username"}
         201响应:{"code":201,"uid": wuid} 
         """
+        try:
+            wuser = WeiboProfile.objects.get(wuid=wuid)
+        except Exception as e:
+            # 第一次扫码登录
+            print("第一次扫码登录")
+            WeiboProfile.objects.create(wuid=wuid, access_token=access_token)
+            return JsonResponse({"code": 201, "uid": wuid})
+
+        user = wuser.user_profile
+        if not user:
+            # 没有和正式用户绑定过
+            print("没有和正式用户绑定过")
+            return JsonResponse({"code": 201, "uid": wuid})
+
+        # 已经正式绑定过
+        username = user.username
+        token = make_token(username)
+
+        return JsonResponse({"code": 200, "token": token, "username": username})
+
+    def post(self, request):
+        """
+           第三方微博登录
+           没有账号,请注册的视图逻辑
+           1.获取请求体数据
+           2.合法性校验
+           3.校验用户名是否被占用
+           4.发送激活邮件
+           5.绑定并返回响应
+        """
+        data = json.loads(request.body)
+        username = data.get("username")
+        password = data.get("password")
+        email = data.get("email")
+        phone = data.get("phone")
+        wuid = data.get("uid")
+
+        # 2.数据合法性校验
+        if len(username) < 6 or len(username) > 11:
+            return JsonResponse({"code": 10113, "error": "用户名不合法"})
+
+        if len(password) < 6 or len(password) > 12:
+            return JsonResponse({"code": 10114, "error": "密码不合法"})
+
+        if len(phone) != 11:
+            return JsonResponse({"code": 10115, "error": "手机号不合法"})
+
+        # 校验用户名是否被占用
+        user_query = UserProfile.objects.filter(username=username)
+        if user_query:
+            # 被占用
+            return JsonResponse({"code": 10116, "error": "用户名被占用"})
+
+        with transaction.atomic():
+            # 1.创建存储点
+            sid = transaction.savepoint()
+            try:
+                # 存入数据表
+                user = UserProfile.objects.create(username=username, password=md5_string(password), email=email,
+                                                  phone=phone)
+                # 绑定
+                wuser = WeiboProfile.objects.get(wuid=wuid)
+                wuser.user_profile = user
+                wuser.save()
+            except Exception as e:
+                transaction.savepoint_rollback(sid)
+                return JsonResponse({"code": 10117, "error": "微博服务器繁忙,请稍后再试"})
+
+            # 提交事务
+            transaction.savepoint_commit(sid)
+
+        # 发送激活邮件
+        verify_url = get_verify_url(username)
+        send_active_email(email, username, verify_url)
+
+        token = make_token(username)
+
+        return JsonResponse({"code": 200, "token": token, "username": username})
+
+
+class BindUserView(View):
+    def post(self, request):
+        """
+        已有账号,请绑定视图逻辑
+        1.获取请求体数据
+        2.校验用户名和密码
+        3.绑定并返回响应
+        """
+        data = json.loads(request.body)
+        username = data.get("username")
+        password = data.get("password")
+        wuid = data.get("uid")
+
+        try:
+            user = UserProfile.objects.get(username=username, password=md5_string(password))
+        except Exception as e:
+            return JsonResponse({"code": 10111, "error": "用户名或密码错误"})
+
+        # 微博用户和正式用户进行绑定
+        # 一查二改三保存
+        try:
+            wuser = WeiboProfile.objects.get(wuid=wuid)
+        except Exception as e:
+            return JsonResponse({"code": 10112, "error": "微博服务器繁忙,请稍后再试"})
+
+        wuser.user_profile = user
+        wuser.save()
+
+        token = make_token(username)
+
+        return JsonResponse({"code": 200, "token": token, "username": username})
