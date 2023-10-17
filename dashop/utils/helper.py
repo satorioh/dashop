@@ -4,9 +4,7 @@ import random
 import time
 import jwt
 
-from django.core import mail
 from django.core.cache import caches
-
 from dashop import settings
 
 
@@ -26,24 +24,6 @@ def make_token(username, expire=3600 * 24):
     payload = {"exp": time.time() + expire, "username": username}
     key = settings.JWT_TOKEN_KEY
     return jwt.encode(payload, key, algorithm="HS256")
-
-
-def send_active_email(email, username, verify_url):
-    """
-    功能函数:发送激活邮件
-    """
-    subject = "达达商城激活邮件"
-    message = f"""
-    尊敬的 {username} 你好,请点击激活链接进行激活: {verify_url}
-    """
-
-    mail.send_mail(
-        # 标题、正文、发件人、收件人
-        subject=subject,
-        message=message,
-        from_email=settings.EMAIL_HOST_USER,
-        recipient_list=[email]
-    )
 
 
 def get_verify_url(username):

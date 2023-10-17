@@ -11,9 +11,9 @@ from django.core.cache import caches
 
 from users.models import UserProfile, Address, WeiboProfile
 from dashop import settings
+from users.tasks import async_send_active_email, async_send_message
 from utils.logging_dec import logging_check
-from utils.sms_api import send_sms
-from utils.helper import md5_string, make_token, send_active_email, get_verify_url
+from utils.helper import md5_string, make_token, get_verify_url
 
 
 def register(request: HttpRequest) -> JsonResponse:
@@ -69,7 +69,7 @@ def register(request: HttpRequest) -> JsonResponse:
 
     # 发送激活邮件
     verify_url = get_verify_url(username)
-    send_active_email(email, username, verify_url)
+    async_send_active_email.delay(email, username, verify_url)
 
     # 签发token
     token = make_token(username)
@@ -297,7 +297,8 @@ def sms_view(request):
 
     code = random.randint(1000, 9999)
     datas = (code, 5)
-    send_sms("1", mobile, datas)
+    # celery异步发送短信验证码
+    async_send_message.delay("1", mobile, datas)
 
     # 存入Redis数据库
     # 60s:用于控制短信发送频率
@@ -442,7 +443,7 @@ class WeiboTokenView(View):
 
         # 发送激活邮件
         verify_url = get_verify_url(username)
-        send_active_email(email, username, verify_url)
+        async_send_active_email.delay(email, username, verify_url)
 
         token = make_token(username)
 
