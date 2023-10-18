@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "corsheaders",
     "users",
+    "goods",
 ]
 
 MIDDLEWARE = [
@@ -201,3 +202,12 @@ SMS_APP_ID = os.getenv("SMS_APP_ID")
 WEIBO_CLIENT_ID = os.getenv("WEIBO_APP_KEY")
 WEIBO_CLIENT_SECRET = os.getenv("WEIBO_APP_SECRET")
 WEIBO_REDIRECT_URI = os.getenv("WEIBO_REDIRECT_URI")
+
+# -------------静态路由---------------#
+# http://127.0.0.1:8000/media/sku/1.png
+MEDIA_URL = "/media/"
+# /project/dashop/media
+MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+
+# -------------页面图片地址------------#
+PIC_URL = "http://127.0.0.1:8000/media/"
