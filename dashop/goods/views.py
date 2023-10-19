@@ -1,9 +1,12 @@
 from django.http import JsonResponse
+from django.views.decorators.cache import cache_page
+
 from dashop import settings
 from goods.models import Catalog, SPU, SKU
 
 
 # Create your views here.
+@cache_page(60 * 5, cache="index")
 def index_view(request):
     """
     商品模块首页展示
