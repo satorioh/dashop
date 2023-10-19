@@ -200,6 +200,15 @@ CACHES = {
             # "PASSWORD": "",
         }
     },
+    # db4:商品详情页缓存
+    "detail": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/4",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            # "PASSWORD": "",
+        }
+    },
 }
 
 # -------------短信接口配置-------------- #
