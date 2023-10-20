@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "users",
     "goods",
+    "carts",
 ]
 
 MIDDLEWARE = [
@@ -204,6 +205,17 @@ CACHES = {
     "detail": {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": "redis://127.0.0.1:6379/4",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            # "PASSWORD": "",
+        }
+    },
+    # db5:购物车数据
+    "carts": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/5",
+        # 默认是300秒,设置为None表示永久存储,永不过期
+        "TIMEOUT": None,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
             # "PASSWORD": "",

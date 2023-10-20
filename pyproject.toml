@@ -23,6 +23,7 @@ license = {text = "MIT"}
 
 [tool.pdm.scripts]
 start = "doppler run -- python dashop/manage.py runserver"
+shell = "doppler run -- python dashop/manage.py shell"
 mm = "doppler run -- python dashop/manage.py makemigrations"
 mt = "doppler run -- python dashop/manage.py migrate"
 
