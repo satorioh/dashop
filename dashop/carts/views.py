@@ -105,6 +105,86 @@ class CartsView(View):
 
         return JsonResponse(result)
 
+    @logging_check
+    def delete(self, request, username):
+        """
+        删除购物车视图逻辑
+        1.获取请求体数据(sku_id)
+        2.获取购物车数据的字典,删除对应的key
+        3.更新到Redis数据库
+        4.返回响应
+        """
+        sku_id = request.mydata.get("sku_id")
+        user_id = request.myuser.id
+        # {"1":[3,1], "2":[5,0]}
+        carts_dict = self.get_carts_dict(user_id)
+        try:
+            carts_dict.pop(str(sku_id))
+        except Exception as e:
+            return JsonResponse({"code": 10301, "error": "该商品不存在"})
+        # 更新到Redis
+        self.update_carts(user_id, carts_dict)
+
+        # 返回响应
+        result = {
+            "code": 200,
+            "data": {
+                "carts_count": len(carts_dict)
+            },
+            "base_url": settings.PIC_URL
+        }
+
+        return JsonResponse(result)
+
+    @logging_check
+    def put(self, request, username):
+        """
+        修改购物车视图逻辑
+        - +1操作：add
+        - -1操作：del
+        - 单选：select
+        - 取消单选：unselect
+        - 全选：selectall
+        - 取消全选：unselectall
+        """
+        # 1.获取请求体数据
+        data = request.mydata
+        sku_id = data.get("sku_id")
+        state = data.get("state")
+        # 2.获取购物车数据字典[redis]
+        # {"1":[3,1], "2":[5,0]}
+        user_id = request.myuser.id
+        carts_dict = self.get_carts_dict(user_id)
+        # 3.修改字典,更新到redis数据库
+        # sku_id:当为全选或取消全选时,它为None
+        if sku_id and sku_id not in carts_dict:
+            return JsonResponse({"code": 10303, "error": "该商品不存在"})
+
+        # {"1":[3,1], "2":[5,0]}
+        if state == "add":
+            carts_dict[sku_id][0] += 1
+        elif state == "del":
+            carts_dict[sku_id][0] -= 1
+        elif state == "select":
+            carts_dict[sku_id][1] = 1
+        elif state == "unselect":
+            carts_dict[sku_id][1] = 0
+        elif state == "selectall":
+            # {"1":[3,1], "2":[5,0], "3":[4,0]}
+            for sid in carts_dict:
+                carts_dict[sid][1] = 1
+        elif state == "unselectall":
+            for sid in carts_dict:
+                carts_dict[sid][1] = 0
+        else:
+            return JsonResponse({"code": 10304, "error": "违法请求"})
+
+        # 更新到Redis数据库
+        self.update_carts(user_id, carts_dict)
+
+        # 4.返回响应
+        return JsonResponse({"code": 200})
+
     @staticmethod
     def get_carts_dict(user_id):
         """
