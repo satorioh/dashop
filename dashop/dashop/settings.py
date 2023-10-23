@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "goods",
     "carts",
     "orders",
+    "pays",
 ]
 
 MIDDLEWARE = [
@@ -242,3 +243,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
 # -------------页面图片地址------------#
 PIC_URL = "http://127.0.0.1:8000/media/"
+
+# ------------- 支付宝支付------------#
+ALIPAY_APPID = os.getenv("ALIPAY_APP_ID")
+ALIPAY_NOTIFY_URL = "http://127.0.0.1:8000/v1/pays/notify_url"
+ALIPAY_RETURN_URL = "http://127.0.0.1:8000/v1/pays/return_url"
+# project/dashop/utils/key_files/
+ALIPAY_KEY_DIR = os.path.join(BASE_DIR, "utils/key_files/")

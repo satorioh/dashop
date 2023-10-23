@@ -1,4 +1,5 @@
 import time
+from alipay import AliPay
 
 from django.db import transaction
 from django.http import JsonResponse
@@ -260,9 +261,42 @@ class OrdersView(View):
                 "total_amount": total_amount,
                 "order_id": order_id,
                 # 第三方支付的路由
-                "pay_url": self.get_pay_url(order_id, float(total_amount)),
+                "pay_url": "https://www.alipay.com",
                 "carts_count": carts_count
             }
         }
 
         return JsonResponse(result)
+
+    def get_pay_url(self, order_id, total_amount):
+        """
+        获取第三方支付宝支付的路由
+        alipay.trade.page.pay
+        """
+        alipay = AliPay(
+            # 应用ID:控制台获取
+            appid=settings.ALIPAY_APPID,
+            # 异步通知地址[有支付结果]
+            app_notify_url=settings.ALIPAY_NOTIFY_URL,
+            # 应用私钥[用于签名]
+            app_private_key_string=open(settings.ALIPAY_KEY_DIR + "app_private_key.pem").read(),
+            # 支付宝公钥[用于签名]
+            alipay_public_key_string=open(settings.ALIPAY_KEY_DIR + "alipay_public_key.pem").read(),
+            # 签名使用算法:非对称加密
+            sign_type="RSA2",
+            # False:线上环境,True:沙箱环境
+            debug=True
+        )
+        # params:支付路由的查询参数
+        params = alipay.api_alipay_trade_page_pay(
+            # 订单标题
+            subject=order_id,
+            # 订单编号
+            out_trade_no=order_id,
+            # 总金额
+            total_amount=total_amount,
+            return_url=settings.ALIPAY_RETURN_URL,
+            notify_url=settings.ALIPAY_NOTIFY_URL
+        )
+
+        return "https://openapi.alipaydev.com/gateway.do?" + params
