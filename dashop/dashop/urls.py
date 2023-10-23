@@ -25,6 +25,7 @@ urlpatterns = [
     path("v1/users/", include("users.urls")),
     path("v1/goods/", include("goods.urls")),
     path("v1/carts/", include("carts.urls")),
+    path("v1/orders/", include("orders.urls")),
 ]
 # MEDIA_URL: /media/
 # MEDIA_ROOT: /project/dashop/media
